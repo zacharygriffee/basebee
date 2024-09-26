@@ -1,0 +1,40 @@
+{
+  "name": "beebase",
+  "version": "0.0.1",
+  "description": "Basebee is a powerful key-value store built on top of Autobase and Hyperbee, designed to efficiently manage data with customizable key/value encodings, prefix-based key organization, and batch operations. It integrates stream-based APIs for handling key-value ranges, history, and real-time data watching, making it versatile and suitable for a wide range of use cases.",
+  "type": "module",
+  "browser": "dist/index.min.js",
+  "homepage": "https://github.com/zacharygriffee/basebee#readme",
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "test": "brittle ./test.js",
+    "bundle": "node ./bundle.js"
+  },
+  "keywords": [
+    "key-value store",
+    "autobase",
+    "hyperbee",
+    "streams",
+    "prefix",
+    "batch",
+    "alpha"
+  ],
+  "dependencies": {
+    "autobase": "^6.5.5",
+    "b4a": "^1.6.6",
+    "compact-encoding": "^2.15.0",
+    "delegates": "^1.0.0",
+    "hyperbee": "^2.20.1",
+    "hypercore-id-encoding": "^1.3.0",
+    "streamx": "^2.20.1",
+    "sub-encoder": "^2.1.3"
+  },
+  "devDependencies": {
+    "brittle": "^3.7.0",
+    "corestore": "^6.18.4",
+    "duplex-through": "^1.0.2",
+    "not-secret-stream": "^1.0.0",
+    "random-access-memory": "^6.2.1"
+  }
+}
