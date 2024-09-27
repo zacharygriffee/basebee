@@ -143,7 +143,7 @@ export class Basebee {
     }
 
     async put(key, value, options = {}) {
-        const asBatch = options?.asBatch;
+        const staged = options?.staged;
         let _valueBuf, _keyBuf;
         const timestamp = Date.now();
         try {
@@ -162,7 +162,7 @@ export class Basebee {
             op: "put"
         };
 
-        if (asBatch) {
+        if (staged) {
             // Return the operation for batch handling
             return op;
         } else {
@@ -183,7 +183,7 @@ export class Basebee {
     }
 
     async del(key, options = {}) {
-        const asBatch = options?.asBatch;
+        const staged = options?.staged;
         const timestamp = Date.now();
         let _keyBuf;
 
@@ -201,7 +201,7 @@ export class Basebee {
             op: "del"
         };
 
-        if (asBatch) {
+        if (staged) {
             // Return the delete operation for batch handling
             return op;
         } else {
@@ -269,7 +269,7 @@ export class Basebee {
 
     // Method to add a writer, now takes a buffer as input
     async addWriter(writerKey, index = false, options = {}) {
-        const asBatch = options?.asBatch;
+        const staged = options?.staged;
         const encodedWriterKey = hypercoreId.encode(writerKey);
 
         const op = {
@@ -278,7 +278,7 @@ export class Basebee {
             index
         };
 
-        if (asBatch) {
+        if (staged) {
             // Return the addWriter operation for batch handling
             return op;
         } else {
@@ -289,7 +289,7 @@ export class Basebee {
 
     // Method to remove a writer, takes a buffer as input
     async removeWriter(writerKey, options = {}) {
-        const asBatch = options?.asBatch;
+        const staged = options?.staged;
         const encodedWriterKey = hypercoreId.encode(writerKey);
 
         const op = {
@@ -297,7 +297,7 @@ export class Basebee {
             key: encodedWriterKey
         };
 
-        if (asBatch) {
+        if (staged) {
             // Return the removeWriter operation for batch handling
             return op;
         } else {
@@ -312,12 +312,12 @@ export class Basebee {
 
         return {
             put: async (key, value, options) => {
-                const op = await this.put(key, value, { ...options, asBatch: true });
+                const op = await this.put(key, value, { ...options, staged: true });
                 batch.push(op);
             },
 
             del: async (key, options) => {
-                const op = await this.del(key, { ...options, asBatch: true });
+                const op = await this.del(key, { ...options, staged: true });
                 batch.push(op);
             },
 
