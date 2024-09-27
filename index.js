@@ -4,56 +4,12 @@ import b4a from 'b4a';
 import c from 'compact-encoding'; // For binary encoding
 import hypercoreId from 'hypercore-id-encoding'; // Import hypercore-id-encoding for writer key encoding
 import delegates from "delegates";
-import { opEncoding } from "./lib/opEncoding.js";
-import { keyEncoder, timeStampEncoder } from "./lib/keyEncoders.js";
-import { getPropFromMultipleObjects } from "./lib/getPropFromMultipleObjects.js";
-import { Transform } from 'streamx'; // Streamx Transform
-
-// Transform function to handle prefix removal and filtering
-function createPrefixFilteringStream(prefix, stream) {
-    const prefixBuffer = prefix ? b4a.concat([b4a.from(prefix), b4a.from("\0")]) : null; // Convert prefix to Buffer if it exists
-
-    const transform = new Transform({
-        transform(chunk, cb) {
-            const isBuffer = b4a.isBuffer(chunk.key);
-            const keyBuffer = isBuffer ? chunk.key : b4a.from(chunk.key);
-
-            // Filter out keys that don't start with the prefix
-            if (prefixBuffer && !keyBuffer.slice(0, prefixBuffer.length).equals(prefixBuffer)) {
-                return cb(); // Skip this chunk (do not emit)
-            }
-
-            // Strip the prefix from the key
-            const strippedKey = prefixBuffer ? keyBuffer.slice(prefixBuffer.length) : keyBuffer;
-            chunk.key = isBuffer ? strippedKey : b4a.toString(strippedKey); // Update the key in the chunk
-            chunk.prefix = prefix;
-            // Emit the transformed chunk
-            cb(null, chunk);
-        }
-    });
-
-    return stream.pipe(transform); // Pipe the stream through the transform
-}
-
-function applyPrefixToRange(range, prefix) {
-    const prefixedRange = {};
-
-    if (!prefix) {
-        // No prefix provided, return the range as is
-        return range;
-    }
-
-    const prefixEncoder = keyEncoder.sub(prefix);
-
-    if (range.gt) prefixedRange.gt = prefixEncoder.encode(range.gt);
-    if (range.gte) prefixedRange.gte = prefixEncoder.encode(range.gte);
-    if (range.lt) prefixedRange.lt = prefixEncoder.encode(range.lt);
-    if (range.lte) prefixedRange.lte = prefixEncoder.encode(range.lte);
-
-    return prefixedRange;
-}
-
-
+import {opEncoding} from "./lib/opEncoding.js";
+import {encodeKey, timeStampEncoder} from "./lib/keyEncoders.js";
+import {createPrefixFilteringStream} from "./lib/createPrefixFilteringStream.js";
+import {applyPrefixToRange} from "./lib/applyPrefixToRange.js";
+import {prepareOptions} from "./lib/prepareOptions.js";
+import {encodeValue} from "./lib/encodeValue.js"; // Streamx Transform
 
 
 export class Basebee {
@@ -407,39 +363,6 @@ export class Basebee {
         }
         this._activeStreams = [];
     }
-}
-
-function prepareOptions(rangeOrKey, options, config) {
-    const _opts = { ...(rangeOrKey || {}), ...(config || {}), ...(options || {}) };
-
-    // Handle prefix: if options.prefix is undefined, fallback to config.prefix, otherwise null
-    let prefix = options.prefix !== undefined
-        ? options.prefix
-        : (config.prefix !== undefined ? config.prefix : null);
-
-    _opts.prefix = prefix;
-
-    // For keyEncoding and valueEncoding, prioritize options, then fallback to config, and default to binary
-    _opts.keyEncoding = options.keyEncoding || config.keyEncoding || c.binary;
-    _opts.valueEncoding = options.valueEncoding || config.valueEncoding || c.binary;
-
-    return _opts;
-}
-
-function encodeKey(prefix, key, ...configs) {
-    const keyEncoding = c.from(getPropFromMultipleObjects("keyEncoding", ...configs) || c.binary);
-
-    const enc = prefix
-        ? c.from(keyEncoder.sub(prefix, keyEncoding))  // Apply sub-encoder if prefix is provided
-        : keyEncoding;  // Use regular encoding if no prefix
-
-    return c.encode(enc, key);
-}
-
-function encodeValue(value, ...configs) {
-    if (b4a.isBuffer(value)) return value;
-    const enc = c.from(getPropFromMultipleObjects("valueEncoding", ...configs) || c.binary);
-    return c.encode(enc, value);
 }
 
 export default Basebee;
