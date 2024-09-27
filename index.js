@@ -9,11 +9,35 @@ import {encodeKey, timeStampEncoder} from "./lib/keyEncoders.js";
 import {createPrefixFilteringStream} from "./lib/createPrefixFilteringStream.js";
 import {applyPrefixToRange} from "./lib/applyPrefixToRange.js";
 import {prepareOptions} from "./lib/prepareOptions.js";
-import {encodeValue} from "./lib/encodeValue.js"; // Streamx Transform
+import {encodeValue} from "./lib/encodeValue.js";
+import EventEmitter from "tiny-emitter";
 
+function forwardEvents(source, target, events) {
+    const listeners = events.map(event => {
+        const listener = (...args) => {
+            // For error events, rethrow the error if it occurs.
+            if (event === 'error') {
+                const [error] = args;
+                if (error instanceof Error) {
+                    throw error;
+                }
+            }
+            args.push(source);
+            target.emit(event, ...args);
+        };
+        source.on(event, listener);
+        return { event, listener };
+    });
+    return () => {
+        listeners.forEach(({ event, listener }) => {
+            source.off(event, listener);
+        });
+    };
+}
 
-export class Basebee {
+export class Basebee extends EventEmitter {
     constructor(store, key, config) {
+        super();
         if (key && !b4a.isBuffer(key) && typeof key !== "string" && typeof key === "object") {
             config = key;
             key = undefined;
@@ -24,11 +48,31 @@ export class Basebee {
         else config.prefix ??= "main";
         this._useConflictStrategy = config?.useConflictStrategy ?? true;
         this._config = config;
+        this._offListeners = [];
         this.autobase = new Autobase(...[store, key].filter(o => !!o), {
             valueEncoding: opEncoding,
             open: this.openView.bind(this),
             apply: this.applyChanges.bind(this)
         });
+
+        this._offListeners.push(
+            forwardEvents(
+                this.autobase, this, [
+                    "error",
+                    "reindexing",
+                    "interrupt",
+                    "is-indexer",
+                    "is-non-indexer",
+                    "unwritable",
+                    "writable",
+                    "update",
+                    "upgrade-available",
+                    "fast-forward",
+                    "warning"
+                ]
+            )
+        );
+
         delegates(this, "autobase")
             .method("update");
         this._activeStreams = [];  // Keep track of active streams
@@ -43,10 +87,19 @@ export class Basebee {
     }
 
     openView(store) {
-        const core = store.get({ name: this._config.name });
+        const core = store.get({name: this._config.name});
+        const {
+            keyEncoding,
+            valueEncoding,
+            name, prefix,
+            ...restOpts
+        } = this._config;
         const bee = new Hyperbee(core, {
             extension: false,
-            metadata: c.encode(c.json, this._config.prefix)
+            ...restOpts,
+            metadata: c.encode(c.json, {
+                prefix: this._config.prefix
+            })
         });
 
         delegates(this, "autobase")
@@ -59,6 +112,17 @@ export class Basebee {
             .getter("discoveryKey")
             .getter("writable")
             .getter("readable");
+
+        this._offListeners.push(
+            forwardEvents(
+                bee, this, [
+                    "append",
+                    "truncate",
+                    "error",
+                    "update"
+                ]
+            )
+        );
 
         return bee;
     }
@@ -151,28 +215,18 @@ export class Basebee {
             _valueBuf = encodeValue(value, preparedOptions, this._config);
             _keyBuf = encodeKey(preparedOptions.prefix, key, preparedOptions);
         } catch (e) {
-            // console.error('Error during put operation:', e);
-            return;
+            this.emit('error', e, { operation: 'put', key });
+            throw e;  // Ensure error is propagated
         }
 
-        const op = {
-            key: b4a.from(_keyBuf),
-            value: b4a.from(_valueBuf),
-            timestamp,
-            op: "put"
-        };
+        const op = { key: b4a.from(_keyBuf), value: b4a.from(_valueBuf), timestamp, op: "put" };
 
-        if (staged) {
-            // Return the operation for batch handling
-            return op;
-        } else {
-            // If not batch, append directly to autobase
-            await this.autobase.append(op, { valueEncoding: opEncoding });
-        }
+        if (staged) return op;
+        await this.autobase.append(op, { valueEncoding: opEncoding });
     }
 
     async _put(change, view) {
-        const { key, value, timestamp } = change;
+        const {key, value, timestamp} = change;
         if (this._useConflictStrategy) {
             const encodedTimestampKey = c.encode(timeStampEncoder, key);
             const encodedTimestamp = c.encode(c.uint64, timestamp);
@@ -191,24 +245,16 @@ export class Basebee {
             const preparedOptions = prepareOptions(null, options, this._config);
             _keyBuf = encodeKey(preparedOptions.prefix, key, preparedOptions);
         } catch (e) {
-            console.error('Error during delete operation:', e);
-            return;
+            this.emit('error', e, { operation: 'del', key });
+            throw e;  // Ensure error is propagated
         }
 
-        const op = {
-            key: b4a.from(_keyBuf),
-            timestamp,
-            op: "del"
-        };
+        const op = { key: b4a.from(_keyBuf), timestamp, op: "del" };
 
-        if (staged) {
-            // Return the delete operation for batch handling
-            return op;
-        } else {
-            // If not batch, append directly to autobase
-            await this.autobase.append(op, { valueEncoding: opEncoding });
-        }
+        if (staged) return op;
+        return this.autobase.append(op, { valueEncoding: opEncoding });
     }
+
 
     async _del(delOp, view) {
         await view.del(delOp.key);
@@ -218,7 +264,7 @@ export class Basebee {
         try {
             const preparedOptions = prepareOptions(null, config, this._config);
             const keyBuf = encodeKey(preparedOptions.prefix, key, preparedOptions);
-            const { keyEncoding, ...restOptions } = preparedOptions;
+            const {keyEncoding, ...restOptions} = preparedOptions;
             const node = await this.autobase.view.get(keyBuf, restOptions);
 
             if (!node?.value) {
@@ -238,7 +284,7 @@ export class Basebee {
     }
 
     async applyChanges(nodes, view) {
-        for (const { value: rawValue } of nodes) {
+        for (const {value: rawValue} of nodes) {
             let ops = [];
             let to = view;
 
@@ -283,7 +329,7 @@ export class Basebee {
             return op;
         } else {
             // If not batch, append directly to autobase
-            await this.autobase.append(op, { valueEncoding: opEncoding });
+            await this.autobase.append(op, {valueEncoding: opEncoding});
         }
     }
 
@@ -302,7 +348,7 @@ export class Basebee {
             return op;
         } else {
             // If not batch, append directly to autobase
-            await this.autobase.append(op, { valueEncoding: opEncoding });
+            await this.autobase.append(op, {valueEncoding: opEncoding});
         }
     }
 
@@ -312,12 +358,12 @@ export class Basebee {
 
         return {
             put: async (key, value, options) => {
-                const op = await this.put(key, value, { ...options, staged: true });
+                const op = await this.put(key, value, {...options, staged: true});
                 batch.push(op);
             },
 
             del: async (key, options) => {
-                const op = await this.del(key, { ...options, staged: true });
+                const op = await this.del(key, {...options, staged: true});
                 batch.push(op);
             },
 
@@ -344,7 +390,7 @@ export class Basebee {
                     op: "bch",  // Denote it's a batch operation
                     ops: batch,
                     key: b4a.alloc(0)
-                }, { valueEncoding: opEncoding });
+                }, {valueEncoding: opEncoding});
 
                 // Clear the batch after flush
                 batch.length = 0;
@@ -354,6 +400,7 @@ export class Basebee {
 
     // Close method to clean up resources
     async close() {
+        this._offListeners.forEach(o => o());
         await this.autobase.close();  // Close Autobase (if it has a close method)
         if (this.view) await this.view.close();
         for (const stream of this._activeStreams) {
