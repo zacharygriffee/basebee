@@ -112,13 +112,14 @@ export class Basebee {
         const preparedOptions = prepareOptions(null, options, this._config);
         const prefixedRange = applyPrefixToRange(preparedOptions, preparedOptions.prefix);
 
-        // Pass the prefixed range and prepared options to the base stream
+        console.log("Prepared options:", preparedOptions);
+        console.log("Prefixed range:", prefixedRange);
+
         const baseStream = this.view.createReadStream({
-            ...prefixedRange,
-            ...preparedOptions
+            ...preparedOptions,
+            ...prefixedRange
         });
 
-        // Apply prefix filtering to the resulting stream
         return this._trackStream(createPrefixFilteringStream(preparedOptions.prefix, baseStream));
     }
 
@@ -138,8 +139,8 @@ export class Basebee {
 
         // Create the base stream with the prefixed range
         const baseStream = this.view.createHistoryStream({
-            ...prefixedRange,
-            ...preparedOptions
+            ...preparedOptions,
+            ...prefixedRange
         });
 
         // Apply prefix filtering
@@ -152,8 +153,8 @@ export class Basebee {
 
         // Create the base stream with the prefixed range
         const baseStream = this.view.createDiffStream({
-            ...prefixedRange,
-            ...preparedOptions
+            ...preparedOptions,
+            ...prefixedRange
         });
 
         // Apply prefix filtering
@@ -167,8 +168,8 @@ export class Basebee {
 
         // Create the base watch stream with the prefixed range
         const baseStream = this.view.watch({
-            ...prefixedRange,
-            ...preparedOptions
+            ...preparedOptions,
+            ...prefixedRange
         });
 
         // Apply prefix filtering

@@ -783,7 +783,7 @@ test('out of bounds iterator, string encoding', async function (t) {
     })
 });
 
-solo('out of bounds iterator, larger db', async function (t) {
+test('out of bounds iterator, larger db', async function (t) {
     const store = new Corestore(RAM);
     const db = new Basebee(store, {
         keyEncoding: 'utf-8',
@@ -801,6 +801,7 @@ solo('out of bounds iterator, larger db', async function (t) {
     let count = 0
 
     s.on('data', function (data) {
+        console.log('Data:', data.key);
         count++
     })
 
