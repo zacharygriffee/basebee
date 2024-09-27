@@ -1,10 +1,10 @@
 # Basebee
 
-### **Version:** 0.0.1-alpha
+### alpha
 
 **Basebee** is a flexible key-value store built on top of [Autobase](https://github.com/holepunchto/autobase) and [Hyperbee](https://github.com/hypercore-protocol/hyperbee), designed for efficient data management with custom key/value encodings, prefix-based key organization, batch operations, and a stream-based API.
 
-> **Note:** This is an **alpha** release (v0.0.1). It is not yet stable, and additional testing is required before it is officially released.
+> **Note:** This is an **alpha** release . It is not yet stable, and additional testing is required before it is officially released.
 
 ---
 

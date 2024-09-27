@@ -11,29 +11,7 @@ import {applyPrefixToRange} from "./lib/applyPrefixToRange.js";
 import {prepareOptions} from "./lib/prepareOptions.js";
 import {encodeValue} from "./lib/encodeValue.js";
 import EventEmitter from "tiny-emitter";
-
-function forwardEvents(source, target, events) {
-    const listeners = events.map(event => {
-        const listener = (...args) => {
-            // For error events, rethrow the error if it occurs.
-            if (event === 'error') {
-                const [error] = args;
-                if (error instanceof Error) {
-                    throw error;
-                }
-            }
-            args.push(source);
-            target.emit(event, ...args);
-        };
-        source.on(event, listener);
-        return { event, listener };
-    });
-    return () => {
-        listeners.forEach(({ event, listener }) => {
-            source.off(event, listener);
-        });
-    };
-}
+import {forwardEvents} from "./lib/forwardEvents.js";
 
 export class Basebee extends EventEmitter {
     constructor(store, key, config) {
@@ -131,10 +109,6 @@ export class Basebee extends EventEmitter {
     createReadStream(options = {}) {
         const preparedOptions = prepareOptions(null, options, this._config);
         const prefixedRange = applyPrefixToRange(preparedOptions, preparedOptions.prefix);
-
-        console.log("Prepared options:", preparedOptions);
-        console.log("Prefixed range:", prefixedRange);
-
         const baseStream = this.view.createReadStream({
             ...preparedOptions,
             ...prefixedRange
