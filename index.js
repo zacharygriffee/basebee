@@ -26,7 +26,7 @@ function createPrefixFilteringStream(prefix, stream) {
             // Strip the prefix from the key
             const strippedKey = prefixBuffer ? keyBuffer.slice(prefixBuffer.length) : keyBuffer;
             chunk.key = isBuffer ? strippedKey : b4a.toString(strippedKey); // Update the key in the chunk
-
+            chunk.prefix = prefix;
             // Emit the transformed chunk
             cb(null, chunk);
         }
