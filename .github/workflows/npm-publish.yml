@@ -40,7 +40,7 @@ jobs:
   publish-npm:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'release'
+#    if: github.event_name == 'release'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
