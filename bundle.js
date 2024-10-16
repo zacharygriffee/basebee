@@ -22,7 +22,7 @@ await pack("prebundling", "./lib/prebundles/from-cjs.js", {
     plugins: [
         rollupFromJsdelivr(),
         rollupVirtualPlugin({
-            "prebundling": `export {default as Autobase} from "autobase";export {default as Hyperbee} from "hyperbee";export {default as hypercoreId} from "hypercore-id-encoding";`
+            "prebundling": `export * as Streamx from "streamx"; export {default as Autobase} from "autobase";export {default as Hyperbee} from "hyperbee";export {default as hypercoreId} from "hypercore-id-encoding";`
         }),
         rollupFromSourcePlugin(projectFolder)
     ]
