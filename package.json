@@ -1,6 +1,6 @@
 {
   "name": "basebee",
-  "version": "0.0.3",
+  "version": "0.0.31",
   "description": "Basebee is a powerful key-value store built on top of Autobase and Hyperbee, designed to efficiently manage data with customizable key/value encodings, prefix-based key organization, and batch operations. It integrates stream-based APIs for handling key-value ranges, history, and real-time data watching, making it versatile and suitable for a wide range of use cases.",
   "type": "module",
   "homepage": "https://github.com/zacharygriffee/basebee#readme",

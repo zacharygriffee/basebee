@@ -1,8 +1,6 @@
-import Autobase from './lib/prebundles/autobase.js';
-import Hyperbee from './lib/prebundles/hyperbee.js';
+import {Autobase, Hyperbee, hypercoreId} from "./lib/prebundles/from-cjs.js";
 import b4a from 'b4a';
 import c from 'compact-encoding'; // For binary encoding
-import hypercoreId from './lib/prebundles/hypercore-id-encoding.js'; // Import hypercore-id-encoding for writer key encoding
 import delegates from "delegates";
 import {opEncoding} from "./lib/opEncoding.js";
 import {encodeKey, timeStampEncoder} from "./lib/keyEncoders.js";
